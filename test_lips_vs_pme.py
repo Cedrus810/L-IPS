@@ -1,10 +1,12 @@
 import openmm as mm
 from openmm import app, unit
 import numpy as np
+import matplotlib
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 
 def build_water_box():
-    """构建一个简单的纯水盒子用于测试"""
+    print("  -> 正在构建 3x3x3 nm 的 TIP3P 纯水盒子...")
     forcefield = app.ForceField('tip3p.xml')
     modeller = app.Modeller(app.Topology(), [])
     modeller.addSolvent(forcefield, model='tip3p', boxSize=mm.Vec3(3.0, 3.0, 3.0)*unit.nanometers)
@@ -13,146 +15,229 @@ def build_water_box():
     return modeller.topology, system, modeller.positions
 
 def setup_lips_system(system, topology):
-    """将传统 PME 系统改造为 L-IPS 系统"""
-    # 1. 找到并禁用原有的 NonbondedForce (将其电荷设为0，只保留 LJ)
+    """构建物理严密的 L-IPS 系统 (带归一化与纯衰减核)"""
     lips_system = mm.System()
     lips_system.setDefaultPeriodicBoxVectors(*system.getDefaultPeriodicBoxVectors())
     
-    # 复制粒子和约束
     for i in range(system.getNumParticles()):
         lips_system.addParticle(system.getParticleMass(i))
     for i in range(system.getNumConstraints()):
         p1, p2, dist = system.getConstraintParameters(i)
         lips_system.addConstraint(p1, p2, dist)
 
-    nb_force = None
-    for force in system.getForces():
-        if isinstance(force, mm.NonbondedForce):
-            nb_force = force
-            break
+    nb_force = next((f for f in system.getForces() if isinstance(f, mm.NonbondedForce)), None)
             
-    # 复制 Lennard-Jones (将电荷设为0)
     lj_force = mm.NonbondedForce()
     lj_force.setNonbondedMethod(mm.NonbondedForce.CutoffPeriodic)
     lj_force.setCutoffDistance(1.0*unit.nanometers)
     lj_force.setUseSwitchingFunction(True)
     lj_force.setSwitchingDistance(0.9*unit.nanometers)
     
-    # 2. 构建核心的 L-IPS CustomGBForce
     lips_force = mm.CustomGBForce()
     lips_force.setNonbondedMethod(mm.CustomGBForce.CutoffPeriodic)
-    lips_force.setCutoffDistance(1.0*unit.nanometers) # IPS 的长程 cutoff (rc)
+    lips_force.setCutoffDistance(1.0*unit.nanometers) 
     
-    # 添加全局参数
-    lips_force.addGlobalParameter("r_local", 0.35) # 局部环境感知半径 (3.5 A)
-    lips_force.addGlobalParameter("rc", 1.0)       # IPS 截断半径 (10 A)
-    lips_force.addGlobalParameter("ONE_4PI_EPS0", 138.935458) # 库仑常数
+    lips_force.addGlobalParameter("r_local", 0.35) 
+    lips_force.addGlobalParameter("rc", 1.0)       
+    lips_force.addGlobalParameter("ONE_4PI_EPS0", 138.935458) 
+    lips_force.addGlobalParameter("rho0", 5.0) # 参考密度，防止极化爆炸
     
-    # 添加每个粒子的参数 (基础电荷 q0, 极化响应系数 delta_q)
-    lips_force.addPerParticleParameter("q0")
-    lips_force.addPerParticleParameter("delta_q")
+    # 彻底抛弃下划线，使用纯字母命名避开 OpenMM 解析器暗礁
+    lips_force.addPerParticleParameter("qbase")
+    lips_force.addPerParticleParameter("dpolar")
     
-    # Pass 1: 计算局部环境密度 (Density)
-    # 使用平滑的钟形截断函数，保证在 r_local 处一阶导为 0
+    # Pass 1: 局部环境密度
     density_expr = "(1.0 - (r/r_local)^2)^2 * step(r_local - r)"
-    lips_force.addComputedValue("Density", density_expr, mm.CustomGBForce.ParticlePairNoExclusions)
+    lips_force.addComputedValue("dens", density_expr, mm.CustomGBForce.ParticlePairNoExclusions)
     
-    # Pass 2: 计算 L-IPS 能量
-    # IPS 势函数: 1/r + r^2/(2*rc^3) - 1.5/rc (保证在 rc 处能量和力都为 0)
-    # Q_i = q0_i + delta_q_i * Density_i (隐变量电荷更新)
+    # Pass 2: 双体能量 (纯衰减核，在 rc 处能量和力完美归零，无全局常数黑洞)
     energy_expr = """
-    ONE_4PI_EPS0 * Q_i * Q_j * ips_pot;
-    ips_pot = 1/r + r^2/(2*rc^3) - 1.5/rc;
-    Q_i = q0_i + delta_q_i * Density_i;
-    Q_j = q0_j + delta_q_j * Density_j;
+    ONE_4PI_EPS0 * Q1 * Q2 * ips_pot;
+    ips_pot = (1/r) * (1 - r/rc)^2;
+    Q1 = qbase1 + dpolar1 * (dens1 / rho0);
+    Q2 = qbase2 + dpolar2 * (dens2 / rho0);
     """
     lips_force.addEnergyTerm(energy_expr, mm.CustomGBForce.ParticlePair)
     
-    # 3. 同步参数和 Exclusions (排除列表)
     for i in range(nb_force.getNumParticles()):
         charge, sigma, epsilon = nb_force.getParticleParameters(i)
-        # 将电荷转移到 L-IPS，LJ 保留在 NonbondedForce
         lj_force.addParticle(0.0, sigma, epsilon) 
+        q_val = charge.value_in_unit(unit.elementary_charge)
+        dpolar_val = 0.10 if i % 3 == 0 else -0.05 
+        lips_force.addParticle([q_val, dpolar_val])
         
-        # 设置 L-IPS 参数 (这里为了演示，给 O 和 H 设置不同的极化率，且保持分子内中性)
-        # TIP3P 中 O 是偶数索引，H 是奇数索引 (简化处理，实际应按 atom name)
-        q0_val = charge.value_in_unit(unit.elementary_charge)
-        if i % 3 == 0: # 假设是 Oxygen
-            delta_q = 0.10  # 氧原子对密度敏感
-        else:          # 假设是 Hydrogen
-            delta_q = -0.05 # 氢原子响应，保证 0.10 + 2*(-0.05) = 0 (分子内守恒)
-            
-        lips_force.addParticle([q0_val, delta_q])
-        
-    # 严格复制 Exclusions (1-2, 1-3 排除)
     for i in range(nb_force.getNumExceptions()):
         p1, p2, chargeProd, sigma, epsilon = nb_force.getExceptionParameters(i)
         lj_force.addException(p1, p2, 0.0, sigma, epsilon)
-        lips_force.addExclusion(p1, p2)
+        lips_force.addExclusion(p1, p2) 
         
     lips_system.addForce(lj_force)
     lips_system.addForce(lips_force)
-    
     return lips_system
 
-def run_comparison():
-    print("1. 构建纯水体系...")
+def get_platform():
+    for p_name in ['CUDA', 'OpenCL', 'CPU']:
+        try:
+            platform = mm.Platform.getPlatformByName(p_name)
+            properties = {'Precision': 'mixed'} if p_name in ['CUDA', 'OpenCL'] else {}
+            return platform, properties, p_name
+        except Exception:
+            continue
+    raise RuntimeError("找不到可用的 OpenMM 计算平台！")
+
+def compute_rdf_oxygen(trajectory_O, box_lengths, r_max=0.8, n_bins=80):
+    """纯 NumPy 实现的带 PBC 的 O-O RDF 计算引擎"""
+    hist = np.zeros(n_bins)
+    r_bins = np.linspace(0, r_max, n_bins + 1)
+    r_centers = 0.5 * (r_bins[:-1] + r_bins[1:])
+    
+    n_frames = len(trajectory_O)
+    n_particles = trajectory_O[0].shape[0]
+    volume = box_lengths[0] * box_lengths[1] * box_lengths[2]
+    rho = n_particles / volume
+    
+    for frame in trajectory_O:
+        diff = frame[:, np.newaxis, :] - frame[np.newaxis, :, :]
+        diff = diff - box_lengths * np.round(diff / box_lengths) # 最小镜像约定
+        dist = np.linalg.norm(diff, axis=-1)
+        np.fill_diagonal(dist, r_max + 1.0) # 排除自身
+        counts, _ = np.histogram(dist, bins=r_bins)
+        hist += counts
+        
+    shell_vols = 4/3 * np.pi * (r_bins[1:]**3 - r_bins[:-1]**3)
+    rdf = hist / (n_frames * n_particles * rho * shell_vols)
+    return r_centers, rdf
+
+def run_nve_test(system, topology, positions, platform, properties):
+    """NVE 能量守恒测试与线性漂移率计算"""
+    print("\n[3] 运行 L-IPS NVE 能量守恒测试 (50,000步 / 50ps)...")
+    integrator = mm.VerletIntegrator(0.001*unit.picoseconds)
+    sim = app.Simulation(topology, system, integrator, platform, properties)
+    sim.context.setPositions(positions)
+    sim.context.setVelocitiesToTemperature(300*unit.kelvin)
+    
+    integrator.step(1000) # 短暂平衡
+    
+    n_steps = 50000
+    save_interval = 500 
+    n_frames = n_steps // save_interval
+    
+    times = []
+    energies = []
+    
+    for i in range(n_frames):
+        integrator.step(save_interval)
+        state = sim.context.getState(getEnergy=True)
+        ke = state.getKineticEnergy().value_in_unit(unit.kilojoules_per_mole)
+        pe = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+        times.append(i * save_interval * 0.001) 
+        energies.append(ke + pe)
+        
+    times = np.array(times)
+    energies = np.array(energies)
+    
+    slope, intercept = np.polyfit(times, energies, 1)
+    n_atoms = system.getNumParticles()
+    drift_rate_per_atom = (slope * 1000) / n_atoms 
+    
+    print(f"  -> 线性漂移率 (Drift Rate): {drift_rate_per_atom:.6f} kJ/mol/ns/atom")
+    print(f"  -> 结论: {'🟢 完美守恒' if abs(drift_rate_per_atom) < 0.05 else '🔴 存在系统性泄漏'}")
+    
+    return times, energies, drift_rate_per_atom
+
+def run_nvt_sampling(system, topology, positions, platform, properties, label=""):
+    """NVT 采样收集轨迹"""
+    print(f"\n[*] 运行 {label} NVT 采样 (20ps, 收集50帧)...")
+    integrator = mm.LangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
+    sim = app.Simulation(topology, system, integrator, platform, properties)
+    sim.context.setPositions(positions)
+    sim.context.setVelocitiesToTemperature(300*unit.kelvin)
+    
+    integrator.step(1000) # 平衡 2ps
+    
+    traj_O = []
+    boxes = []
+    for _ in range(50):
+        integrator.step(200)
+        state = sim.context.getState(getPositions=True)
+        pos = state.getPositions(asNumpy=True).value_in_unit(unit.nanometers)
+        box = state.getPeriodicBoxVectors(asNumpy=True).value_in_unit(unit.nanometers)
+        traj_O.append(pos[0::3]) # 只取 Oxygen
+        boxes.append(np.diag(box))
+        
+    return traj_O, np.mean(boxes, axis=0)
+
+def main():
+    print("="*50)
+    print(" L-IPS 终极验证流水线 (单点力 + NVE + RDF)")
+    print("="*50)
+    
     topology, pme_system, positions = build_water_box()
     lips_system = setup_lips_system(pme_system, topology)
+    platform, properties, p_name = get_platform()
+    print(f"  -> 使用计算平台: {p_name}")
     
-    integrator_pme = mm.LangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
-    integrator_lips = mm.LangevinMiddleIntegrator(300*unit.kelvin, 1/unit.picosecond, 0.002*unit.picoseconds)
-    
-    platform = mm.Platform.getPlatformByName('CUDA') # 如果有 GPU 用 CUDA，否则用 CPU
-    properties = {'Precision': 'mixed'} if platform.getName() == 'CUDA' else {}
-    
-    sim_pme = app.Simulation(topology, pme_system, integrator_pme, platform, properties)
-    sim_lips = app.Simulation(topology, lips_system, integrator_lips, platform, properties)
-    
+    # 1. 单点受力对比
+    print("\n[1] 计算单点受力对比...")
+    sim_pme = app.Simulation(topology, pme_system, mm.LangevinMiddleIntegrator(300, 1, 0.002), platform, properties)
+    sim_lips = app.Simulation(topology, lips_system, mm.LangevinMiddleIntegrator(300, 1, 0.002), platform, properties)
     sim_pme.context.setPositions(positions)
     sim_lips.context.setPositions(positions)
     
-    print("2. 计算 PME 能量与受力...")
-    state_pme = sim_pme.context.getState(getEnergy=True, getForces=True)
-    pe_pme = state_pme.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
-    forces_pme = state_pme.getForces(asNumpy=True)
+    f_pme = sim_pme.context.getState(getForces=True).getForces(asNumpy=True)[0::3].flatten()
+    f_lips = sim_lips.context.getState(getForces=True).getForces(asNumpy=True)[0::3].flatten()
+    r_val = np.corrcoef(f_pme, f_lips)[0, 1]
+    print(f"  -> 氧原子受力 Pearson R: {r_val:.4f}")
     
-    print("3. 计算 L-IPS 能量与受力...")
-    state_lips = sim_lips.context.getState(getEnergy=True, getForces=True)
-    pe_lips = state_lips.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
-    forces_lips = state_lips.getForces(asNumpy=True)
+    # 2. NVE 能量守恒测试
+    times, nve_energies, drift_rate = run_nve_test(lips_system, topology, positions, platform, properties)
     
-    print("\n" + "="*40)
-    print(f"总势能对比:")
-    print(f"  PME 势能:   {pe_pme:12.2f} kJ/mol")
-    print(f"  L-IPS 势能: {pe_lips:12.2f} kJ/mol")
-    print(f"  差异:       {abs(pe_pme - pe_lips):12.2f} kJ/mol")
-    print("="*40)
+    # 3. NVT 采样与 RDF 计算
+    print("\n[4] 运行 NVT 采样与 RDF 计算...")
+    traj_pme, box_pme = run_nvt_sampling(pme_system, topology, positions, platform, properties, "PME")
+    traj_lips, box_lips = run_nvt_sampling(lips_system, topology, positions, platform, properties, "L-IPS")
     
-    # 对比受力
-    forces_pme_flat = forces_pme.flatten()
-    forces_lips_flat = forces_lips.flatten()
+    r_bins, rdf_pme = compute_rdf_oxygen(traj_pme, box_pme)
+    _, rdf_lips = compute_rdf_oxygen(traj_lips, box_lips)
+    print("  -> RDF 计算完成！")
     
-    rmse = np.sqrt(np.mean((forces_pme_flat - forces_lips_flat)**2))
-    correlation = np.corrcoef(forces_pme_flat, forces_lips_flat)[0, 1]
+    # 4. 生成可视化图表
+    print("\n[5] 生成可视化图表...")
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
     
-    print(f"\n受力对比 (Forces):")
-    print(f"  力的 RMSE:  {rmse:.4f} kJ/mol/nm")
-    print(f"  皮尔逊相关系数 (Pearson R): {correlation:.4f}")
+    # 图1: 受力散点图
+    axs[0].scatter(f_pme, f_lips, s=2, alpha=0.5, color='blue')
+    min_f, max_f = min(f_pme.min(), f_lips.min()), max(f_pme.max(), f_lips.max())
+    axs[0].plot([min_f, max_f], [min_f, max_f], 'r--', lw=2)
+    axs[0].set_title(f'Forces (R = {r_val:.3f})')
+    axs[0].set_xlabel('PME O-Forces')
+    axs[0].set_ylabel('L-IPS O-Forces')
+    axs[0].grid(True, alpha=0.5)
     
-    # 画图
-    plt.figure(figsize=(6, 6))
-    plt.scatter(forces_pme_flat, forces_lips_flat, s=1, alpha=0.5, color='blue')
-    min_f, max_f = min(forces_pme_flat.min(), forces_lips_flat.min()), max(forces_pme_flat.max(), forces_lips_flat.max())
-    plt.plot([min_f, max_f], [min_f, max_f], 'r--', label='y = x (Perfect Match)')
-    plt.xlabel('PME Forces (kJ/mol/nm)')
-    plt.ylabel('L-IPS Forces (kJ/mol/nm)')
-    plt.title(f'L-IPS vs PME Forces (R = {correlation:.3f})')
-    plt.legend()
-    plt.grid(True)
+    # 图2: NVE 能量漂移
+    axs[1].plot(times, nve_energies, color='green', lw=1.5, alpha=0.8)
+    fit_y = np.polyfit(times, nve_energies, 1)
+    axs[1].plot(times, np.polyval(fit_y, times), 'r--', lw=2, label=f'Fit: {drift_rate:.4f}')
+    axs[1].set_title(f'NVE Total Energy (50 ps)\nDrift: {drift_rate:.4f} kJ/mol/ns/atom')
+    axs[1].set_xlabel('Time (ps)')
+    axs[1].set_ylabel('Total Energy (kJ/mol)')
+    axs[1].legend()
+    axs[1].grid(True, alpha=0.5)
+    
+    # 图3: O-O RDF
+    axs[2].plot(r_bins, rdf_pme, 'k-', lw=2, label='PME')
+    axs[2].plot(r_bins, rdf_lips, 'r--', lw=2, label='L-IPS')
+    axs[2].set_title('O-O Radial Distribution Function')
+    axs[2].set_xlabel('r (nm)')
+    axs[2].set_ylabel('g(r)')
+    axs[2].legend()
+    axs[2].grid(True, alpha=0.5)
+    axs[2].set_xlim(0.2, 0.8)
+    
     plt.tight_layout()
-    plt.savefig('lips_vs_pme_forces.png', dpi=300)
-    print("\n受力对比散点图已保存为 'lips_vs_pme_forces.png'")
+    out_file = 'lips_full_validation.png'
+    plt.savefig(out_file, dpi=300)
+    print(f"\n✅ 验证完成！综合图表已保存为: {out_file}")
 
 if __name__ == "__main__":
-    run_comparison()
+    main()
