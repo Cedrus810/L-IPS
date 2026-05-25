@@ -1,0 +1,33 @@
+def setup_decomposed_lips_system(base_system, topology):
+    # ... (前置参数与表格定义同上) ...
+    
+    # 放弃 CustomGBForce，改用 CustomNonbondedForce 实现极化残差
+    # 这样可以利用 OpenMM 的 InteractionGroup 进行空间拆分！
+    lips_force = mm.CustomNonbondedForce(
+        "ONE_4PI_EPS0 * (Q1*Q2 - qbase1*qbase2) * ips_table(r) + "
+        "0.5 * k_penalty * ((Q1-qbase1)^2 + (Q2-qbase2)^2) / N_neighbors" # 简化自能分配
+    )
+    
+    # 添加全局参数和表格 (tanh_table, ips_table) ...
+    
+    # 定义 PerParticle 参数
+    lips_force.addPerParticleParameter("qbase")
+    lips_force.addPerParticleParameter("Q") # 预先或每步更新
+    # ...
+    
+    lips_force.setNonbondedMethod(mm.CustomNonbondedForce.CutoffPeriodic)
+    lips_force.setCutoffDistance(1.2*unit.nanometers)
+    
+    # 🌟 核心核爆点：利用累加性进行空间拆分 (Interaction Groups)
+    water_atoms = [i for i, a in enumerate(topology.atoms()) if a.residue.name == 'HOH']
+    lipid_atoms = [i for i, a in enumerate(topology.atoms()) if a.residue.name in ['DPPC', 'POPC']]
+    protein_atoms = [i for i, a in enumerate(topology.atoms()) if a.residue.name not in ['HOH', 'DPPC', 'POPC']]
+    
+    # 只计算 水-水, 水-膜, 水-蛋白 的极化累加！
+    # 蛋白内部的极化相互抵消或忽略，极大降低 O(N^2) 复杂度
+    lips_force.addInteractionGroup(water_atoms, water_atoms)
+    lips_force.addInteractionGroup(water_atoms, lipid_atoms)
+    lips_force.addInteractionGroup(water_atoms, protein_atoms)
+    
+    # 注意：密度 dens 的计算需要另一个短程 CustomNonbondedForce 来累加
+    # ...
