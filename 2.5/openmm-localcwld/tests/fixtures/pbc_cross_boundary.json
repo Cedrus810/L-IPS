@@ -1,0 +1,149 @@
+{
+  "fixture_name": "pbc_cross_boundary",
+  "fixture_schema_version": 1,
+  "formula_version": "v2.6-compatible-1",
+  "description": "1 nm cubic orthorhombic box (deliberately small; rc shrunk to 0.4 nm for this fixture only, still >= r_env, so the cutoff stays under half the box length). Two particles placed near opposite faces so their raw (unwrapped) separation is 0.9 nm but the minimum-image separation is 0.1 nm. Also checks that shifting BOTH particles by one full lattice vector 'a' leaves density/energy/force exactly unchanged.",
+  "generator": {
+    "method": "localcwld_reference.compute_local_cwld + independent central finite difference in this script",
+    "script": "openmm-localcwld/docs/reports/generate_lcwld_030_fixtures.py"
+  },
+  "globals": {
+    "r_env_nm": 0.35,
+    "rc_nm": 0.4,
+    "zmm_order": 2,
+    "rho0": 13.5,
+    "k_polar": 0.8,
+    "q_delta_clamp_e": 0.2,
+    "ONE_4PI_EPS0": 138.935458,
+    "use_q_penalty": false,
+    "q_penalty_strength": 180.0
+  },
+  "box_vectors_nm": [
+    [
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "particles": [
+    {
+      "index": 0,
+      "position_nm": [
+        0.95,
+        0.5,
+        0.5
+      ],
+      "qbase": -0.8,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 0
+    },
+    {
+      "index": 1,
+      "position_nm": [
+        0.05,
+        0.5,
+        0.5
+      ],
+      "qbase": 2.0,
+      "charge_mod": 1.0,
+      "dpolar": 0.0,
+      "is_polar": 0.0,
+      "dens_source": 1.0,
+      "dens_sink": 0.0,
+      "source_class_weight": 2.0,
+      "static_phase": 0.0,
+      "residue_id": 1
+    }
+  ],
+  "exclusions": [],
+  "expected_minimum_image_separation_nm": 0.1,
+  "expected": {
+    "density": [
+      1.6867971678467302,
+      0.0
+    ],
+    "Q": [
+      -0.8149162645482568,
+      2.0
+    ],
+    "dQ_ddensity": [
+      -0.008751709728934819,
+      0.0
+    ],
+    "lambda": [
+      1529.4433108447242,
+      -623.1841148559505
+    ],
+    "energy_direct_kJ_per_mol": 420.8572662880971,
+    "energy_penalty_kJ_per_mol": 0.0,
+    "energy_total_kJ_per_mol": 420.8572662880971,
+    "force_direct_kJ_per_mol_per_nm": [
+      [
+        -436.88746707331035,
+        0.0,
+        0.0
+      ],
+      [
+        436.88746707331035,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_chain_kJ_per_mol_per_nm": [
+      [
+        80.2780142476412,
+        0.0,
+        0.0
+      ],
+      [
+        -80.2780142476412,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_total_kJ_per_mol_per_nm": [
+      [
+        -356.60945282566917,
+        0.0,
+        0.0
+      ],
+      [
+        356.60945282566917,
+        0.0,
+        0.0
+      ]
+    ],
+    "finite_difference_force_total_h1e-6": [
+      [
+        -356.60945297877333,
+        -0.0,
+        -0.0
+      ],
+      [
+        356.6094528650865,
+        -0.0,
+        -0.0
+      ]
+    ]
+  },
+  "invariants": {
+    "lattice_translation_by_a_leaves_energy_force_density_unchanged": true
+  },
+  "note": "This fixture only covers an orthorhombic box shifted along a single axis-aligned lattice vector. A genuine triclinic (tilted) box test is still TODO -- see plan section 47; do not treat this fixture as covering triclinic support."
+}

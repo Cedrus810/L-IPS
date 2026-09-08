@@ -1,0 +1,21 @@
+# Build/generated artifacts (plan section 21/42): never commit these.
+build*/
+stage/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+*.so
+*.dll
+*.dylib
+# SWIG-generated wrappers and encoded kernel sources are generated, not sources.
+*_wrap.cxx
+*_wrap.cpp
+localcwld.py
+LocalCWLDKernelSources.cpp
+LocalCWLDKernelSources.h
+setup.py
+# Trajectories and job logs must never enter this subtree (plan section 21).
+*.dcd
+*.log
+logs/

@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lips"
+version = "2.6.0"
+description = "L-IPS: CWLD local-environment charge response vs PME / AMOEBA"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=2.0",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "mdtraj>=1.10",
+    # openmm 只有 conda 有，不通过 pip 声明；见 README 的环境说明。
+]
+
+[project.optional-dependencies]
+# 分析的 GPU 后端。缺了也能跑，会回落到 numpy 路径。
+gpu = ["torch>=2.0"]
+dev = ["pytest>=8", "pyflakes>=3"]
+
+[project.scripts]
+# 一个子命令一个入口，不再靠 `python 某个散落的脚本.py`
+lips-paths       = "lips.paths:main"
+lips-run-zn      = "lips.run.zn_job:main"
+lips-szz         = "lips.analysis.szz:main"
+lips-zn-coord    = "lips.analysis.zn_coordination:main"
+lips-force-audit = "lips.analysis.force_audit:main"
+lips-nve-drift   = "lips.analysis.nve_drift:main"
+lips-deltaq      = "lips.analysis.deltaq_probe:main"
+lips-block-time  = "lips.analysis.block_time:main"
+lips-dcd-check   = "lips.analysis.dcd_integrity:main"
+lips-hybrid-lowk = "lips.analysis.hybrid_lowk:main"
+lips-build-1aay  = "lips.build.zinc_finger:main"
+lips-build-znwat = "lips.build.zn_water:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+# env 里目前只有 pyflakes（tests/test_lint.py 用的就是它）。这段是给装了 ruff
+# 的人用的，规则集和那个测试的口径保持一致：F(pyflakes) 必查，风格类不强制。
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["F", "E4", "E7", "E9", "I"]
+ignore = ["F541"]   # f-string 无占位符：纯风格，改它要动几十处日志行

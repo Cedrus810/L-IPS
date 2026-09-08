@@ -1,0 +1,397 @@
+{
+  "fixture_name": "water_ca_cluster",
+  "fixture_schema_version": 1,
+  "formula_version": "v2.6-compatible-1",
+  "description": "Synthetic (not equilibrated) cluster: 1 Ca2+ + 3 TIP3P-like waters (one within r_env of Ca, one within r_env, one outside r_env but inside rc), each water's intramolecular O-H/H-H pairs excluded via NonbondedForce exceptions (mirroring what a real force field would set up). Cross-checks localcwld_reference's analytic density kernel against the REAL v2.6 CustomGBForce (1024-point tabulated kernel), isolated to its own force group and evaluated with a single static OpenMM Context (no Integrator step). 'expected' values below are from the real CustomGBForce (v0.1 frozen defaults: a_q2=0.5, ca_source_weight=2.0, enable_water_response=True, enable_solute_polarization=True) -- the plan's designated ground-truth reference implementation -- with the analytic reference numbers recorded alongside under 'analytic_comparison' for DEC-002, not substituted in as ground truth.",
+  "generator": {
+    "method": "test_lips_vs_pmeV2.6.py::setup_cwld_lips_system() -> CustomGBForce isolated to its own force group, evaluated via a single static openmm.Context.getState() call (no Integrator.step() ever called)",
+    "script": "openmm-localcwld/docs/reports/generate_water_ca_cluster_fixture.py"
+  },
+  "globals": {
+    "r_env_nm": 0.35,
+    "rc_nm": 1.2,
+    "zmm_order": 2,
+    "rho0": 13.5,
+    "k_polar": 0.8,
+    "q_delta_clamp_e": 0.2,
+    "ONE_4PI_EPS0": 138.935458,
+    "use_q_penalty": false,
+    "q_penalty_strength": 180.0,
+    "builder_a_q2": 0.5,
+    "builder_ca_source_weight": 2.0,
+    "builder_enable_water_response": true,
+    "builder_enable_solute_polarization": true
+  },
+  "box_vectors_nm": [
+    [
+      3.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      3.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      3.0
+    ]
+  ],
+  "num_particles": 10,
+  "particles": [
+    {
+      "index": 0,
+      "position_nm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qbase": 2.0,
+      "charge_mod": 2.5,
+      "dpolar": 0.0,
+      "is_polar": 0.0,
+      "dens_source": 1.0,
+      "dens_sink": 0.0,
+      "source_class_weight": 2.0,
+      "static_phase": 0.0,
+      "residue_id": 0
+    },
+    {
+      "index": 1,
+      "position_nm": [
+        0.3,
+        0.0,
+        0.0
+      ],
+      "qbase": -0.834,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 1.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.5,
+      "static_phase": 1.0,
+      "residue_id": 1
+    },
+    {
+      "index": 2,
+      "position_nm": [
+        0.35857598607644253,
+        0.07567921679809064,
+        0.0
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 1
+    },
+    {
+      "index": 3,
+      "position_nm": [
+        0.35857598607644253,
+        -0.07567921679809064,
+        0.0
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 1
+    },
+    {
+      "index": 4,
+      "position_nm": [
+        -0.2,
+        0.15,
+        0.1
+      ],
+      "qbase": -0.834,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 1.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.5,
+      "static_phase": 1.0,
+      "residue_id": 2
+    },
+    {
+      "index": 5,
+      "position_nm": [
+        -0.14142401392355747,
+        0.22567921679809064,
+        0.1
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 2
+    },
+    {
+      "index": 6,
+      "position_nm": [
+        -0.14142401392355747,
+        0.07432078320190935,
+        0.1
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 2
+    },
+    {
+      "index": 7,
+      "position_nm": [
+        0.6,
+        0.4,
+        0.1
+      ],
+      "qbase": -0.834,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 1.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.5,
+      "static_phase": 1.0,
+      "residue_id": 3
+    },
+    {
+      "index": 8,
+      "position_nm": [
+        0.6585759860764425,
+        0.47567921679809066,
+        0.1
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 3
+    },
+    {
+      "index": 9,
+      "position_nm": [
+        0.6585759860764425,
+        0.3243207832019094,
+        0.1
+      ],
+      "qbase": 0.417,
+      "charge_mod": 0.7391665000000001,
+      "dpolar": 0.075,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 3
+    }
+  ],
+  "exclusions": [
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ],
+    [
+      4,
+      6
+    ],
+    [
+      5,
+      6
+    ],
+    [
+      7,
+      8
+    ],
+    [
+      7,
+      9
+    ],
+    [
+      8,
+      9
+    ]
+  ],
+  "expected": {
+    "source": "real v2.6 CustomGBForce (tabulated density kernel), isolated force group, static Context evaluation",
+    "energy_total_kJ_per_mol": 20.63980943221403,
+    "force_total_kJ_per_mol_per_nm": [
+      [
+        182.04952797515784,
+        -45.661221515323675,
+        -68.68894025723421
+      ],
+      [
+        11.312005216314077,
+        1.4567948692005253,
+        0.9128777369142496
+      ],
+      [
+        -49.126333623176635,
+        -12.325818294503675,
+        -0.25228222860034766
+      ],
+      [
+        -49.60458709889528,
+        11.220967821087203,
+        -0.208843806710314
+      ],
+      [
+        17.921957492222752,
+        -17.50342416487932,
+        -12.69359961585809
+      ],
+      [
+        4.479102494803065,
+        -0.5725215403620574,
+        -0.04636135936730312
+      ],
+      [
+        -107.57772116515669,
+        58.44990170864096,
+        79.86761469399835
+      ],
+      [
+        147.75837696970504,
+        106.54059700546492,
+        26.501759998030938
+      ],
+      [
+        -75.91470086351708,
+        -58.73462972505083,
+        -12.239711028051229
+      ],
+      [
+        -81.2976273974571,
+        -42.870646164274035,
+        -13.152514133122047
+      ]
+    ]
+  },
+  "analytic_comparison": {
+    "source": "localcwld_reference.compute_local_cwld (analytic density kernel)",
+    "density": [
+      0.0,
+      0.3519366930445644,
+      0.0,
+      0.0,
+      0.8329862557267792,
+      0.5757301832376713,
+      2.520538802084272,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "Q": [
+      2.0,
+      -0.8371276176916538,
+      0.417,
+      0.417,
+      -0.8413949415712172,
+      0.4195576690252695,
+      0.4281083791160608,
+      -0.834,
+      0.417,
+      0.417
+    ],
+    "energy_total_kJ_per_mol": 20.63980943213429,
+    "force_total_kJ_per_mol_per_nm": [
+      [
+        182.04952864402048,
+        -45.66122161851831,
+        -68.68894041966318
+      ],
+      [
+        11.31200475077516,
+        1.4567948692005501,
+        0.9128777369225194
+      ],
+      [
+        -49.12633362310649,
+        -12.32581829449196,
+        -0.2522822286023474
+      ],
+      [
+        -49.60458709882584,
+        11.220967821070472,
+        -0.2088438067116729
+      ],
+      [
+        17.92195758168728,
+        -17.50342423202155,
+        -12.693599660618705
+      ],
+      [
+        4.479102479561487,
+        -0.5725215159859616,
+        -0.046361348566158256
+      ],
+      [
+        -107.57772144284276,
+        58.449901854593904,
+        79.86761489037941
+      ],
+      [
+        147.7583769697425,
+        106.54059700552021,
+        26.501759998045117
+      ],
+      [
+        -75.91470086352854,
+        -58.73462972506797,
+        -12.23971102805498
+      ],
+      [
+        -81.29762739748325,
+        -42.870646164299416,
+        -13.15251413312999
+      ]
+    ],
+    "vs_tabulated": {
+      "energy_abs_error": 7.974065852067724e-11,
+      "energy_rel_error": 3.863439668983585e-12,
+      "force_max_abs_error": 6.688626399409259e-07,
+      "force_max_abs_error_particle": 0,
+      "force_max_rel_error_where_gt_1e-3": 2.3297731159751565e-07
+    }
+  },
+  "dec002_note": "This is one data point for DEC-002, not a full 10,000-point sweep (see docs/reports/dec002_kernel_comparison.py / dec002_kernel_comparison_result.json for that). DEC-002 remains PENDING main-agent sign-off; do not treat either kernel as chosen based on this fixture alone."
+}

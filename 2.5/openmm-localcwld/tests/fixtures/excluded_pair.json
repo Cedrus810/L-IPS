@@ -1,0 +1,124 @@
+{
+  "fixture_name": "excluded_pair",
+  "fixture_schema_version": 1,
+  "formula_version": "v2.6-compatible-1",
+  "description": "Same geometry as same_residue but different residue_id (0 and 1) plus an explicit addExclusion(0,1). Density, Local pair energy, direct force and chain force must ALL be exactly zero -- contrast with same_residue, where only the density edge is zeroed.",
+  "generator": {
+    "method": "localcwld_reference.compute_local_cwld",
+    "script": "openmm-localcwld/docs/reports/generate_lcwld_030_fixtures.py"
+  },
+  "globals": {
+    "r_env_nm": 0.35,
+    "rc_nm": 1.2,
+    "zmm_order": 2,
+    "rho0": 13.5,
+    "k_polar": 0.8,
+    "q_delta_clamp_e": 0.2,
+    "ONE_4PI_EPS0": 138.935458,
+    "use_q_penalty": false,
+    "q_penalty_strength": 180.0
+  },
+  "box_vectors_nm": null,
+  "particles": [
+    {
+      "index": 0,
+      "position_nm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qbase": -0.8,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 0
+    },
+    {
+      "index": 1,
+      "position_nm": [
+        0.2,
+        0.0,
+        0.0
+      ],
+      "qbase": 2.0,
+      "charge_mod": 1.0,
+      "dpolar": 0.0,
+      "is_polar": 0.0,
+      "dens_source": 1.0,
+      "dens_sink": 0.0,
+      "source_class_weight": 2.0,
+      "static_phase": 0.0,
+      "residue_id": 1
+    }
+  ],
+  "exclusions": [
+    [
+      0,
+      1
+    ]
+  ],
+  "expected": {
+    "density": [
+      0.0,
+      0.0
+    ],
+    "Q": [
+      -0.8,
+      2.0
+    ],
+    "dQ_ddensity": [
+      -0.008888888888888889,
+      0.0
+    ],
+    "lambda": [
+      0.0,
+      0.0
+    ],
+    "energy_direct_kJ_per_mol": 0.0,
+    "energy_penalty_kJ_per_mol": 0.0,
+    "energy_total_kJ_per_mol": 0.0,
+    "force_direct_kJ_per_mol_per_nm": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_chain_kJ_per_mol_per_nm": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_total_kJ_per_mol_per_nm": [
+      [
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ]
+  },
+  "invariants": {
+    "everything_exactly_zero": true
+  }
+}

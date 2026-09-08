@@ -1,0 +1,169 @@
+{
+  "fixture_name": "three_particle_chain",
+  "fixture_schema_version": 1,
+  "formula_version": "v2.6-compatible-1",
+  "description": "3 particles, 3 distinct residues, no exclusions. Particle 0 is the only response sink+polar site (water-O-like); particle 1 is the only density source (Ca2+-like) and is within r_env of particle 0; particle 2 is a fixed-charge spectator ion (Cl--like) inside rc of both but not a density source or sink. Tests that lambda correctly accumulates over multiple pair partners (particle 0 and particle 1 each interact directly with two neighbors) while the chain-force pass only fires on the single 0-1 density edge.",
+  "generator": {
+    "method": "localcwld_reference.compute_local_cwld + independent central finite difference in this script",
+    "script": "openmm-localcwld/docs/reports/generate_lcwld_030_fixtures.py"
+  },
+  "globals": {
+    "r_env_nm": 0.35,
+    "rc_nm": 1.2,
+    "zmm_order": 2,
+    "rho0": 13.5,
+    "k_polar": 0.8,
+    "q_delta_clamp_e": 0.2,
+    "ONE_4PI_EPS0": 138.935458,
+    "use_q_penalty": false,
+    "q_penalty_strength": 180.0
+  },
+  "box_vectors_nm": null,
+  "particles": [
+    {
+      "index": 0,
+      "position_nm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "qbase": -0.8,
+      "charge_mod": 1.0,
+      "dpolar": -0.15,
+      "is_polar": 1.0,
+      "dens_source": 0.0,
+      "dens_sink": 1.0,
+      "source_class_weight": 0.0,
+      "static_phase": 1.0,
+      "residue_id": 0
+    },
+    {
+      "index": 1,
+      "position_nm": [
+        0.2,
+        0.0,
+        0.0
+      ],
+      "qbase": 2.0,
+      "charge_mod": 1.0,
+      "dpolar": 0.0,
+      "is_polar": 0.0,
+      "dens_source": 1.0,
+      "dens_sink": 0.0,
+      "source_class_weight": 2.0,
+      "static_phase": 0.0,
+      "residue_id": 1
+    },
+    {
+      "index": 2,
+      "position_nm": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "qbase": -1.0,
+      "charge_mod": 1.0,
+      "dpolar": 0.0,
+      "is_polar": 0.0,
+      "dens_source": 0.0,
+      "dens_sink": 0.0,
+      "source_class_weight": 0.0,
+      "static_phase": 0.0,
+      "residue_id": 2
+    }
+  ],
+  "exclusions": [],
+  "expected": {
+    "density": [
+      0.9071220324864636,
+      0.0,
+      0.0
+    ],
+    "Q": [
+      -0.8080511958960022,
+      2.0,
+      -1.0
+    ],
+    "dQ_ddensity": [
+      -0.008848889303412277,
+      0.0,
+      0.0
+    ],
+    "lambda": [
+      878.5531190521134,
+      -644.0462985692685,
+      441.4521752661707
+    ],
+    "energy_direct_kJ_per_mol": 271.51024707686827,
+    "energy_penalty_kJ_per_mol": 0.0,
+    "energy_total_kJ_per_mol": 271.51024707686827,
+    "force_direct_kJ_per_mol_per_nm": [
+      [
+        60.32104649589756,
+        0.0,
+        0.0
+      ],
+      [
+        -108.1244015393641,
+        0.0,
+        0.0
+      ],
+      [
+        47.80335504346654,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_chain_kJ_per_mol_per_nm": [
+      [
+        68.3846362209803,
+        0.0,
+        0.0
+      ],
+      [
+        -68.3846362209803,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "force_total_kJ_per_mol_per_nm": [
+      [
+        128.70568271687785,
+        0.0,
+        0.0
+      ],
+      [
+        -176.5090377603444,
+        0.0,
+        0.0
+      ],
+      [
+        47.80335504346654,
+        0.0,
+        0.0
+      ]
+    ],
+    "finite_difference_force_total_h1e-6": [
+      [
+        128.7056826981825,
+        -0.0,
+        -0.0
+      ],
+      [
+        -176.50903777166604,
+        -0.0,
+        -0.0
+      ],
+      [
+        47.803355045061835,
+        -0.0,
+        -0.0
+      ]
+    ]
+  }
+}

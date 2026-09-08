@@ -1,0 +1,19 @@
+# 轨迹和大产物。这棵树在 NFS 上，git 连松散对象都写不进去（导出拒绝 0444），
+# 所以这里主要是防止仓库将来搬到别处时把 17 GB 一起带走。
+data/*.dcd
+data/*.csv
+data/inbox/*
+!data/inbox/.gitkeep
+*.dcd
+
+# 作业日志
+logs/
+training.o*
+learn.out
+
+# 构建树与缓存
+openmm-localcwld/build*/
+__pycache__/
+*.py[co]
+.pytest_cache/
+*.egg-info/
